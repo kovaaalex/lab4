@@ -7,19 +7,27 @@ const apiKey = process.env.APIKEY;
 button.addEventListener('click', getWeather);
 async function getWeather() {
     const city = input.value.trim();
-    if(!city) return;
+    if (!city) return;
+
+    // Очищаем блок перед новым запросом
+    weatherDiv.style.display = 'none';
+    cityName.textContent = '';
+    weatherDetails.innerHTML = '';
+
     const url = `https://api.openweathermap.org/data/2.5/weather?q=${encodeURIComponent(city)}&units=metric&appid=${apiKey}&lang=ru`;
+    
     try {
         const response = await fetch(url);
-        if(!response.ok) {
+        if (!response.ok) {
             throw new Error('Город не найден');
         }
         const data = await response.json();
         displayWeather(data);
-      } catch (error) {
-        weatherDiv.innerHTML = `<p>Ошибка при получении данных</p>`;
-        alert(error.message);
-      }
+    } catch (error) {
+        cityName.textContent = '';
+        weatherDetails.innerHTML = `<p class="error-message">Ошибка: ${error.message}</p>`;
+        weatherDiv.style.display = 'block';
+    }
 }
 function displayWeather(data) {
     cityName.textContent = `${data.name}, ${data.sys.country}`;
