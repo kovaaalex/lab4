@@ -67,6 +67,9 @@ function displayAllWeather(cities, weatherDataList) {
                 <p>Температура: ${Math.round(weatherData.main.temp)}°C</p>
                 <p>Ощущается как: ${Math.round(weatherData.main.feels_like)}°C</p>
                 <p>Погода: ${weatherData.weather[0].description}</p>
+                <p>Влажность: ${weatherData.main.humidity}%</p>
+                <p>Ветер: ${Math.round(weatherData.wind.speed)} м/с</p>
+                <p>Давление: ${Math.round(weatherData.main.pressure * 0.75)} мм рт.ст.</p>
                 <img src="https://openweathermap.org/img/wn/${weatherData.weather[0].icon}@2x.png" alt="${weatherData.weather[0].main}">
                 <hr>
             </div>
