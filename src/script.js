@@ -4,41 +4,75 @@ const weatherDiv = document.getElementById('weather');
 const cityName = document.getElementById('city-name');
 const weatherDetails = document.getElementById('weather-details');
 const apiKey = process.env.APIKEY;
+
+// Запрет на ввод пробелов первыми символами
+input.addEventListener('input', function() {
+    this.value = this.value.replace(/^\s+/, '');
+    if (this.value === ' ') {
+        this.value = '';
+    }
+});
+
 button.addEventListener('click', getWeather);
+
 async function getWeather() {
     const city = input.value.trim();
     if (!city) return;
 
-    // Очищаем блок перед новым запросом
     weatherDiv.style.display = 'none';
     cityName.textContent = '';
     weatherDetails.innerHTML = '';
 
-    const url = `https://api.openweathermap.org/data/2.5/weather?q=${encodeURIComponent(city)}&units=metric&appid=${apiKey}&lang=ru`;
-    
     try {
-        const response = await fetch(url);
-        if (!response.ok) {
-            throw new Error('Город не найден');
+        // 1. Сначала получаем список всех городов с таким названием
+        const geocodingUrl = `https://api.openweathermap.org/geo/1.0/direct?q=${encodeURIComponent(city)}&limit=5&appid=${apiKey}`;
+        const geocodingResponse = await fetch(geocodingUrl);
+        
+        if (!geocodingResponse.ok) {
+            throw new Error('Ошибка при поиске городов');
         }
-        const data = await response.json();
-        displayWeather(data);
+
+        const cities = await geocodingResponse.json();
+        
+        if (!cities.length) {
+            throw new Error('Города не найдены');
+        }
+
+        // 2. Для каждого города получаем погоду
+        const weatherPromises = cities.map(cityData => {
+            const weatherUrl = `https://api.openweathermap.org/data/2.5/weather?lat=${cityData.lat}&lon=${cityData.lon}&units=metric&appid=${apiKey}&lang=ru`;
+            return fetch(weatherUrl).then(res => res.json());
+        });
+
+        const weatherDataList = await Promise.all(weatherPromises);
+        displayAllWeather(cities, weatherDataList);
+
     } catch (error) {
         cityName.textContent = '';
         weatherDetails.innerHTML = `<p class="error-message">Ошибка: ${error.message}</p>`;
         weatherDiv.style.display = 'block';
     }
 }
-function displayWeather(data) {
-    cityName.textContent = `${data.name}, ${data.sys.country}`;
-    weatherDetails.innerHTML = `
-        <p>Температура: ${Math.round(data.main.temp)}°C (ощущается как ${Math.round(data.main.feels_like)}°C)</p>
-        <p>Погода: ${data.weather[0].description}</p>
-        <p>Влажность: ${data.main.humidity}%</p>
-        <p>Ветер: ${Math.round(data.wind.speed)} м/с</p>
-        <p>Давление: ${Math.round(data.main.pressure * 0.75)} мм рт.ст.</p>
-        <img src="https://openweathermap.org/img/wn/${data.weather[0].icon}@2x.png" alt="${data.weather[0].main}">
-    `;
+
+function displayAllWeather(cities, weatherDataList) {
+    cityName.textContent = `Найдено городов: ${weatherDataList.length}`;
+    
+    let weatherHTML = '';
+    
+    weatherDataList.forEach((weatherData, index) => {
+        const city = cities[index];
+        weatherHTML += `
+            <div class="city-weather">
+                <h3>${city.name}, ${city.country} (${city.state || '—'})</h3>
+                <p>Температура: ${Math.round(weatherData.main.temp)}°C</p>
+                <p>Ощущается как: ${Math.round(weatherData.main.feels_like)}°C</p>
+                <p>Погода: ${weatherData.weather[0].description}</p>
+                <img src="https://openweathermap.org/img/wn/${weatherData.weather[0].icon}@2x.png" alt="${weatherData.weather[0].main}">
+                <hr>
+            </div>
+        `;
+    });
+
+    weatherDetails.innerHTML = weatherHTML;
     weatherDiv.style.display = 'block';
 }
-
